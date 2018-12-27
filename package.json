@@ -1,0 +1,51 @@
+{
+   "name": "dama",
+   "version": "0.0.1",
+   "description": "",
+   "main": "./dist/main.js",
+   "scripts": {
+      "start": "webpack-dev-server --port 9000 --inline --progress --profile --colors --watch --content-base src/ --mode development",
+      "build": "webpack --config webpack.config.js --mode production",
+      "build.prod": "webpack --config webpack.config.js -p",
+      "test": "karma start karma.config.js",
+      "killme": "Taskkill /IM node.exe /F",
+      "prepare": "webpack --config webpack-npm.config.js --mode production "
+   },
+   "keywords": [
+      "graph",
+      "javascript",
+      "typescript",
+      "web",
+      "programming"
+   ],
+   "repository": {
+      "type": "git",
+      "url": "https://github.com/3ger/dama"
+   },
+   "author": "3ger",
+   "license": "MIT",
+   "private": false,
+   "devDependencies": {
+      "@types/jasmine": "^2.8.14",
+      "@types/node": "^7.10.2",
+      "@types/pixi.js": "^4.8.6",
+      "awesome-typescript-loader": "^5.2.1",
+      "jasmine-core": "^3.3.0",
+      "karma": "^2.0.5",
+      "karma-chrome-launcher": "^2.2.0",
+      "karma-jasmine": "^2.0.1",
+      "karma-jasmine-html-reporter": "^1.4.0",
+      "karma-mocha-reporter": "^2.2.5",
+      "karma-webpack": "^3.0.5",
+      "pixi-viewport": "^3.14.2",
+      "pixi.js": "^4.8.4",
+      "source-map": "^0.7.3",
+      "source-map-loader": "^0.2.4",
+      "tslint": "^5.12.0",
+      "tslint-loader": "^3.6.0",
+      "typescript": "^2.9.2",
+      "webpack": "^4.28.1",
+      "webpack-cli": "^3.1.2",
+      "webpack-dev-server": "^3.1.10"
+   }
+}

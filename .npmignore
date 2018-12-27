@@ -1,0 +1,16 @@
+.vscode
+Documentation
+karma.config.js
+package-lock.json
+spec.bundle.js
+webpack-npm.config.js
+src/Jedro.Test
+src/index.html
+src/main.ts
+karma_html
+src
+package.json
+tsconfig.json
+tslint.json
+webpack-test.config.js
+webpack.config.js
