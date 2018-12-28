@@ -1,5 +1,6 @@
 .idea
 node_modules
+!node_modules/@types/pixi-viewport/*
 src/**/*.js
 src/**/*.js.map
 typings
@@ -11,4 +12,4 @@ debug.log
 karma_html
 Documentation
 package-lock.json
-!node_modules/@types/pixi-viewport/*
+
