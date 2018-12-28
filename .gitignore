@@ -1,5 +1,4 @@
 .idea
-.vscode
 node_modules
 src/**/*.js
 src/**/*.js.map
@@ -12,3 +11,4 @@ debug.log
 karma_html
 Documentation
 package-lock.json
+
