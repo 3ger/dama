@@ -81,22 +81,22 @@ export class DamaGraph {
       this.pixiApp.destroy();
    }
 
-   addDataNode(data: Data, position: Point): DamaGraph {
+   addDataNode(data: Data, position: Point): DataNode {
       let dn = new DataNode(data);
       let dnVis = dn.getGraphItem();
       this.viewPort.addChild(dnVis);
       dnVis.x = position.x;
       dnVis.y = position.y;
-      return this;
+      return dn;
    }
 
-   addManipulation(manipulation: Manipulation, position: Point): DamaGraph {
+   addManipulation(manipulation: Manipulation, position: Point): ManipulationNode {
       let mN = new ManipulationNode(manipulation);
       let mNVis = mN.getGraphItem();
       this.viewPort.addChild(mNVis);
       mNVis.x = position.x;
       mNVis.y = position.y;
-      return this;
+      return mN;
    }
 
    private handleRightClickEvent(event: PIXI.interaction.InteractionEvent) {
@@ -125,6 +125,11 @@ export class DamaGraph {
       });
       this.openedContextMenus = [];
    }
+
+   toWorld(x: number, y: number): Point { return this.viewPort.toWorld(x, y); }
+   toScreen(x: number, y: number): Point { return this.viewPort.toScreen(x, y); }
+   toGlobal(x: number, y: number): Point { return this.viewPort.toGlobal(new PIXI.Point(x, y)); }
+   toLocal(x: number, y: number): Point { return this.viewPort.toLocal(new PIXI.Point(x, y)); }
 
    /**
     * Adds test nodes
@@ -174,9 +179,7 @@ class DataNode extends PIXI.Graphics implements GraphItem {
    private outputNudge: OutputNudge;
    private dataEntryBoxes: DataEntryBox[] = [];
    private graphItem?: PIXI.Graphics;
-   private isDragging: boolean = false;
-   private dragData: PIXI.interaction.InteractionEvent;
-   private dragStart: Point;
+   private dragSetup: DraggableSetup;
 
    constructor(public readonly data: Data, private readonly level: number = 0, isActive: boolean = false) {
       super();
@@ -256,47 +259,12 @@ class DataNode extends PIXI.Graphics implements GraphItem {
       }
 
       if (this.level === 0) {
-         this.on("mousedown", this.onDragStart);
-         this.on("touchstart", this.onDragStart);
-         this.on("pointerdown", this.onDragStart);
-
-         this.on("mouseup", this.onDragEnd);
-         this.on("mouseupoutside", this.onDragEnd);
-         this.on("touchend", this.onDragEnd);
-         this.on("touchendoutside", this.onDragEnd);
-         this.on("pointerup", this.onDragEnd);
-
-         this.on("mousemove", this.onPointerMove);
-         this.on("pointermove", this.onPointerMove);
          this.addChild(this.graphItem);
-         this.interactive = true;
+         this.dragSetup = new DraggableSetup(this);
          return this;
       }
       else
          return this.graphItem;
-   }
-
-   private onPointerMove(e: PIXI.interaction.InteractionEvent) {
-      if (this.isDragging) {
-         let newPosition = this.dragData.data.getLocalPosition(this.parent);
-         this.x = newPosition.x - this.dragStart.x;
-         this.y = newPosition.y - this.dragStart.y;
-         e.stopPropagation();
-      }
-   }
-
-   private onDragStart(event: PIXI.interaction.InteractionEvent) {
-      this.dragData = event;
-      let tmpPos = event.data.getLocalPosition(this.parent);
-      this.dragStart = new Point(tmpPos.x - this.x, tmpPos.y - this.y);
-      this.alpha = 0.5;
-      this.isDragging = true;
-   }
-
-   private onDragEnd() {
-      this.alpha = 1;
-      this.isDragging = false;
-      this.dragData = null;
    }
 }
 
@@ -454,11 +422,16 @@ class OutputNudge
    getContextMenu(parentGraph: DamaGraph, position: Point): ContextMenu {
       return new ContextMenu(position)
          .addButton("-->> Manipulation", (e) => {
+            let posWorld = parentGraph.toWorld(
+               this.getGlobalPosition().x + 10,
+               this.getGlobalPosition().y);
+
             parentGraph.addManipulation(
-               new Manipulation("Manipulation T", this.dataEntry, ""),
-               new Point(this.getGlobalPosition().x + 10, this.getGlobalPosition().y)
+               new Manipulation("W", this.dataEntry, ""),
+               posWorld
             );
-         });
+
+         }, this);
    }
 }
 
@@ -467,9 +440,7 @@ class ManipulationNode extends PIXI.Container implements GraphItem {
    private inputNudge: InputNudge;
    private outputNudge: OutputNudge;
    private outDataNode: DataNode;
-   private isDragging: boolean = false;
-   private dragData: PIXI.interaction.InteractionEvent;
-   private dragStart: Point;
+   private dragSetup: DraggableSetup;
 
    constructor(public manipulation: Manipulation) {
       super();
@@ -493,45 +464,55 @@ class ManipulationNode extends PIXI.Container implements GraphItem {
       outData.x = this.width - 1;
       outData.y = outNudge.y / 2 - 3.5;
       this.addChild(outData);
-      this.interactive = true;
-
-      this.on("mousedown", this.onDragStart);
-      this.on("touchstart", this.onDragStart);
-      this.on("pointerdown", this.onDragStart);
-
-      this.on("mouseup", this.onDragEnd);
-      this.on("mouseupoutside", this.onDragEnd);
-      this.on("touchend", this.onDragEnd);
-      this.on("touchendoutside", this.onDragEnd);
-      this.on("pointerup", this.onDragEnd);
-
-      this.on("mousemove", this.onPointerMove);
-      this.on("pointermove", this.onPointerMove);
+      this.dragSetup = new DraggableSetup(this);
    }
 
    getGraphItem(parent?: PIXI.Container): PIXI.DisplayObject {
       return this;
    }
+}
+
+class DraggableSetup {
+   private isDragging: boolean = false;
+   private dragData: PIXI.interaction.InteractionEvent;
+   private dragStart: Point;
+
+   constructor(private readonly element: PIXI.DisplayObject) {
+      element.interactive = true;
+
+      element.on("mousedown", this.onDragStart, this);
+      element.on("touchstart", this.onDragStart, this);
+      element.on("pointerdown", this.onDragStart, this);
+
+      element.on("mouseup", this.onDragEnd, this);
+      element.on("mouseupoutside", this.onDragEnd, this);
+      element.on("touchend", this.onDragEnd, this);
+      element.on("touchendoutside", this.onDragEnd, this);
+      element.on("pointerup", this.onDragEnd, this);
+
+      element.on("mousemove", this.onPointerMove, this);
+      element.on("pointermove", this.onPointerMove, this);
+   }
 
    private onPointerMove(e: PIXI.interaction.InteractionEvent) {
       if (this.isDragging) {
-         let newPosition = this.dragData.data.getLocalPosition(this.parent);
-         this.x = newPosition.x - this.dragStart.x;
-         this.y = newPosition.y - this.dragStart.y;
+         let newPosition = this.dragData.data.getLocalPosition(this.element.parent);
+         this.element.x = newPosition.x - this.dragStart.x;
+         this.element.y = newPosition.y - this.dragStart.y;
          e.stopPropagation();
       }
    }
 
    private onDragStart(event: PIXI.interaction.InteractionEvent) {
       this.dragData = event;
-      let tmpPos = event.data.getLocalPosition(this.parent);
-      this.dragStart = new Point(tmpPos.x - this.x, tmpPos.y - this.y);
-      this.alpha = 0.5;
+      let tmpPos = event.data.getLocalPosition(this.element.parent);
+      this.dragStart = new Point(tmpPos.x - this.element.x, tmpPos.y - this.element.y);
+      this.element.alpha = 0.5;
       this.isDragging = true;
    }
 
    private onDragEnd() {
-      this.alpha = 1;
+      this.element.alpha = 1;
       this.isDragging = false;
       this.dragData = null;
    }
@@ -578,10 +559,13 @@ class ContextMenu {
 
    constructor(private readonly position: Point) { }
 
-   addButton(text: string, onClick: (e: MouseEvent) => void): ContextMenu {
+   addButton(text: string, onClick: (e: MouseEvent) => void, context?: any): ContextMenu {
       let btn = window.document.createElement("button");
       btn.innerText = text;
-      btn.onclick = (e) => { onClick(e); this.destroy(); };
+      btn.onclick = (e) => {
+         context ? onClick.call(context, e) : onClick(e);
+         this.destroy();
+      };
       btn.oncontextmenu = (e) => { e.preventDefault(); };
       let br = window.document.createElement("br");
       this.elements.push(btn);
