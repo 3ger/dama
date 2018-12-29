@@ -86,6 +86,8 @@ export class Manipulation {
       return this.getOutput();
    }
 
+   hasOut(): boolean { return this.Output.Entries.length > 0; }
+
    constructor(public name: string, public parameters?: Array<DataEntry>, public code?: string) {
       this.parameters = parameters || [];
    }
@@ -94,8 +96,8 @@ export class Manipulation {
     * Adds given parameter to this Manipulation.
     * @param param parameter to add to this Manipulation.
     */
-   addParam(param: DataEntry): Manipulation {
-      this.parameters.push(param);
+   addParam(...param: DataEntry[]): Manipulation {
+      this.parameters.push(...param);
       return this;
    }
 

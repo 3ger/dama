@@ -8,8 +8,6 @@ export class DamaGraph {
    private viewPort: Viewport;
    private openedContextMenus: Array<ContextMenu> = [];
 
-   private draggedNode?: DataNode | ManipulationNode;
-
    /**
     * Creates a new graph
     *
@@ -90,13 +88,12 @@ export class DamaGraph {
       return dn;
    }
 
-   addManipulation(manipulation: Manipulation, position: Point): ManipulationNode {
-      let mN = new ManipulationNode(manipulation);
-      let mNVis = mN.getGraphItem();
+   addManipulation(manipulationNode: ManipulationNode, position: Point): ManipulationNode {
+      let mNVis = manipulationNode.getGraphItem();
       this.viewPort.addChild(mNVis);
       mNVis.x = position.x;
       mNVis.y = position.y;
-      return mN;
+      return manipulationNode;
    }
 
    private handleRightClickEvent(event: PIXI.interaction.InteractionEvent) {
@@ -195,6 +192,13 @@ class DataNode extends PIXI.Graphics implements GraphItem {
       this.outputNudge = new OutputNudge(data.Entries, { x: this.titleBox.size.x, y: 1 });
    }
 
+   notifyMove() {
+      this.dataEntryBoxes.forEach(el => {
+         el.notifyMove();
+      });
+      this.outputNudge.notifyMove();
+   }
+
    getGraphItem(parent?: PIXI.Container): PIXI.DisplayObject {
       if (this.graphItem)
          return this.graphItem;
@@ -229,7 +233,7 @@ class DataNode extends PIXI.Graphics implements GraphItem {
          if (!hasHeader) {
             // BUG HERE: TODO count depth (get first non Data item)
             // not important for now
-            inVis.x = this.graphItem.getChildAt(0).x + 1.5;
+            inVis.x = this.graphItem.x + 1.5;
             inVis.y = inVis.getBounds().height / 2 + 3.5;
          }
          this.graphItem.addChild(inVis);
@@ -261,14 +265,21 @@ class DataNode extends PIXI.Graphics implements GraphItem {
       if (this.level === 0) {
          this.addChild(this.graphItem);
          this.dragSetup = new DraggableSetup(this);
+         this.dragSetup.onDragged(() => {
+            this.notifyMove();
+         });
          return this;
       }
-      else
+      else {
          return this.graphItem;
+      }
    }
 }
 
 class DataEntryBox implements GraphItem {
+
+   private outNudges: OutputNudge[] = [];
+   private dataNodes: DataNode[] = [];
 
    constructor(public readonly dataElement: DataEntry, private readonly level = 0) {
       // new TitleBox({ x: 195, y: 30 }, this.data.name, GraphColor.Data);
@@ -287,7 +298,9 @@ class DataEntryBox implements GraphItem {
          case DataEntryType.Data:
             // TODO: IMPROVE!
             if (this.dataElement.value instanceof Data) {
-               g.addChild(new DataNode(this.dataElement.value, this.level + 1).getGraphItem(g));
+               let dtNode = new DataNode(this.dataElement.value, this.level + 1);
+               this.dataNodes.push(dtNode);
+               g.addChild(dtNode.getGraphItem(g));
             }
             break;
          default:
@@ -296,10 +309,20 @@ class DataEntryBox implements GraphItem {
       return g;
    }
 
+   notifyMove() {
+      this.outNudges.forEach(element => {
+         element.notifyMove();
+      });
+      this.dataNodes.forEach(element => {
+         element.notifyMove();
+      });
+   }
+
    private addSimpleBox(g: PIXI.Container, dataEntry: DataEntry): any {
       let color = dataEntry.getType() === DataEntryType.String ? GraphColor.String : GraphColor.Number;
       let titleBox = new TitleBox({ x: 200 - this.level * 10, y: 30 }, this.dataElement.name, color);
       let outNudge = new OutputNudge([dataEntry], { x: titleBox.size.x, y: 1 });
+      this.outNudges.push(outNudge);
       g.addChild(titleBox.getGraphItem(g));
       g.addChild(outNudge.getGraphItem(g));
    }
@@ -358,26 +381,24 @@ class TitleBox implements GraphItem {
 /**
  * Input data graph element
  */
-class InputNudge implements GraphItem {
-   private graphItem: PIXI.Graphics;
-
+class InputNudge extends PIXI.Graphics implements GraphItem {
    constructor(public isActive: boolean = false) {
-      this.graphItem = new PIXI.Graphics();
+      super();
    }
 
    getGraphItem(parent?: PIXI.Container): PIXI.DisplayObject {
       this.redraw();
-      return this.graphItem;
+      return this;
    }
 
    redraw(): void {
-      this.graphItem.clear()
+      this.clear()
          .beginFill(this.isActive ? GraphColor.InputNudgeActive : GraphColor.InputNudge)
          .lineStyle(1, 0x0)
          .arc(0, 0, 13, Math.PI, Math.PI * 2);
-      this.graphItem.rotation = (Math.PI * -1.5);
-      this.graphItem.x = 1.5;
-      this.graphItem.y = 16;
+      this.rotation = (Math.PI * -1.5);
+      this.x = 1.5;
+      this.y = 16;
    }
 }
 
@@ -388,10 +409,14 @@ class OutputNudge
    extends PIXI.Graphics
    implements GraphItem, WithContextMenu {
 
-   constructor(public readonly dataEntry: DataEntry[], public loc: Point, public isActive: boolean = false) {
-      super();
+   private connections: ManipulationNode[] = [];
 
-      // this.graphItem = new PIXI.Graphics();
+   constructor(
+      public readonly dataEntries: DataEntry[],
+      public loc: Point,
+      public isActive: boolean = false
+   ) {
+      super();
       this.interactive = true;
       this.on("pointerover", this.onMouseOver, this);
       this.on("pointerout", this.onMouseOut, this);
@@ -425,50 +450,136 @@ class OutputNudge
             let posWorld = parentGraph.toWorld(
                this.getGlobalPosition().x + 10,
                this.getGlobalPosition().y);
-
+            let mNode = new ManipulationNode(new Manipulation("Generic"));
             parentGraph.addManipulation(
-               new Manipulation("W", this.dataEntry, ""),
+               mNode,
                posWorld
             );
-
+            mNode.addParam(this);
+            this.connections.push(mNode);
          }, this);
+   }
+
+   notifyMove(): void {
+      this.connections.forEach(element => {
+         element.refreshConnections();
+      });
    }
 }
 
 class ManipulationNode extends PIXI.Container implements GraphItem {
+
    private titleBox: TitleBox;
    private inputNudge: InputNudge;
    private outputNudge: OutputNudge;
    private outDataNode: DataNode;
    private dragSetup: DraggableSetup;
+   private inputNudges: Map<OutputNudge, ConnectionLine> = new Map<OutputNudge, ConnectionLine>();
 
    constructor(public manipulation: Manipulation) {
       super();
+
       this.titleBox = new TitleBox(
          new Point(300, 50),
          manipulation.name,
          GraphColor.Manipulation,
          true
       );
-      this.inputNudge = new InputNudge();
-      this.outputNudge = new OutputNudge(manipulation.Output.Entries, { x: this.titleBox.size.x, y: 10 }, true);
-      this.outDataNode = new DataNode(manipulation.Output, 0, true);
-
       this.addChild(this.titleBox.getGraphItem());
+
+      this.inputNudge = new InputNudge();
       let inNudge = this.inputNudge.getGraphItem();
       inNudge.y = this.height / 2;
+      this.addChild(inNudge);
+
+      if (this.manipulation.Output.Entries.length > 0)
+         this.addOutNode();
+
+      this.dragSetup = new DraggableSetup(this);
+      this.dragSetup.onDragged(() => this.refreshConnections());
+   }
+
+   public refreshConnections(): void {
+      this.inputNudges.forEach((value: ConnectionLine) => {
+         value.redraw();
+      });
+      this.outDataNode.notifyMove();
+   }
+
+   private addOutNode() {
+      this.outputNudge = new OutputNudge(this.manipulation.Output.Entries, { x: this.titleBox.size.x, y: 10 }, true);
       let outNudge = this.outputNudge.getGraphItem();
+      outNudge.name = "outputNudge";
       outNudge.y = this.height / 2;
-      this.addChild(inNudge, outNudge);
+
+      if (this.getChildByName(outNudge.name))
+         this.removeChild(this.getChildByName(outNudge.name));
+      this.addChild(outNudge);
+
+      this.outDataNode = new DataNode(this.manipulation.Output, 0, true);
       let outData = this.outDataNode.getGraphItem();
       outData.x = this.width - 1;
       outData.y = outNudge.y / 2 - 3.5;
+      outData.name = "outDataNode";
+
+      if (this.getChildByName(outData.name))
+         this.removeChild(this.getChildByName(outData.name));
       this.addChild(outData);
-      this.dragSetup = new DraggableSetup(this);
+   }
+
+   addParam(fromNudge: OutputNudge): ManipulationNode {
+      if (!this.inputNudges.has(fromNudge)) {
+         // add line to nudge
+         let conLine = new ConnectionLine(fromNudge, this.inputNudge);
+         this.inputNudges.set(fromNudge, conLine);
+
+         this.parent.addChild(conLine);
+         conLine.redraw(); // corrects positions -> todo: fix with better design
+
+         this.manipulation.addParam(...fromNudge.dataEntries);
+      }
+
+      if (this.manipulation.hasOut())
+         this.addOutNode();
+
+      return this;
    }
 
    getGraphItem(parent?: PIXI.Container): PIXI.DisplayObject {
+      if (this.manipulation.hasOut())
+         this.addOutNode();
       return this;
+   }
+}
+
+class ConnectionLine extends PIXI.Graphics implements GraphItem {
+
+   constructor(private readonly from: OutputNudge, private readonly to: InputNudge) {
+      super();
+      this.redraw();
+   }
+
+   getGraphItem(parent?: PIXI.Container): PIXI.DisplayObject {
+      this.redraw();
+      return this;
+   }
+
+   redraw(): void {
+      this.clear();
+      let posStart = this.from.getGlobalPosition();
+      let posEnd = this.to.getGlobalPosition();
+
+      if (this.parent) {
+         let pTransform = (this.parent as Viewport).toWorld(posStart.x, posStart.y);
+         posStart.x = pTransform.x;
+         posStart.y = pTransform.y;
+         pTransform = (this.parent as Viewport).toWorld(posEnd.x, posEnd.y);
+         posEnd.x = pTransform.x;
+         posEnd.y = pTransform.y;
+      }
+      this.lineStyle(4, GraphColor.Connection);
+      this.moveTo(posStart.x, posStart.y);
+      this.lineTo(posEnd.x, posEnd.y);
    }
 }
 
@@ -476,6 +587,7 @@ class DraggableSetup {
    private isDragging: boolean = false;
    private dragData: PIXI.interaction.InteractionEvent;
    private dragStart: Point;
+   private moveListeners: Array<() => void> = [];
 
    constructor(private readonly element: PIXI.DisplayObject) {
       element.interactive = true;
@@ -500,6 +612,9 @@ class DraggableSetup {
          this.element.x = newPosition.x - this.dragStart.x;
          this.element.y = newPosition.y - this.dragStart.y;
          e.stopPropagation();
+         this.moveListeners.forEach(f => {
+            f(); //  .call(context);
+         });
       }
    }
 
@@ -516,6 +631,10 @@ class DraggableSetup {
       this.isDragging = false;
       this.dragData = null;
    }
+
+   onDragged(fn: () => void) {
+      this.moveListeners.push(fn); // , context);
+   }
 }
 
 enum GraphColor {
@@ -527,6 +646,7 @@ enum GraphColor {
    OutputNudge = 0xFFFFFF,
    OutputNudgeActive = 0xC6EBBE,
    Manipulation = 0xCD5C5C,
+   Connection = 0x000000,
 }
 
 /**
