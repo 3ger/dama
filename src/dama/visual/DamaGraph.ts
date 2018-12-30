@@ -79,7 +79,7 @@ export class DamaGraph implements WithContextMenu {
    }
 
    addDataNode(data: Data, position: Point): DataNode {
-      let dn = new DataNode(data);
+      let dn = new DataNode(this, data);
       let dnVis = dn.getGraphItem();
       this.viewPort.addChild(dnVis);
       dnVis.x = position.x;
@@ -115,6 +115,7 @@ export class DamaGraph implements WithContextMenu {
          this.openedMenus.push(contextMenu);
          this.pixiApp.view.parentElement.appendChild(contextMenu.render());
       }
+      event.stopPropagation();
    }
 
    showDialog(dlg: DialogBox) {
@@ -195,7 +196,12 @@ class DataNode extends PIXI.Graphics implements GraphItem, WithContextMenu {
    private graphItem?: PIXI.Graphics;
    private dragSetup: DraggableSetup;
 
-   constructor(public readonly data: Data, private readonly level: number = 0, isActive: boolean = false) {
+   constructor(
+      public readonly damaGraph: DamaGraph,
+      public readonly data: Data,
+      private readonly level: number = 0,
+      isActive: boolean = false
+   ) {
       super();
       this.titleBox = new TitleBox(
          { x: (210 - (this.level * 10)), y: 30 },
@@ -206,7 +212,7 @@ class DataNode extends PIXI.Graphics implements GraphItem, WithContextMenu {
       if (level <= 0)
          this.inputNudge = new InputNudge(isActive);
 
-      this.outputNudge = new OutputNudge(data.Entries, { x: this.titleBox.size.x, y: 1 });
+      this.outputNudge = new OutputNudge(this.damaGraph, data.Entries, { x: this.titleBox.size.x, y: 1 });
    }
 
    notifyMove() {
@@ -237,7 +243,7 @@ class DataNode extends PIXI.Graphics implements GraphItem, WithContextMenu {
 
       // child elements (data-entries)
       this.data.Entries.forEach(element => {
-         let entryBx = new DataEntryBox(element, this.level);
+         let entryBx = new DataEntryBox(this.damaGraph, element, this.level);
          let graphEl = entryBx.getGraphItem(this.graphItem);
          graphEl.y = hasHeader ? this.graphItem.height - 1 : this.level > 0 ? -1 : 1;
          graphEl.x = hasHeader ? curX : this.level > 0 ? curX : 0;
@@ -312,7 +318,11 @@ class DataEntryBox implements GraphItem {
    private outNudges: OutputNudge[] = [];
    private dataNodes: DataNode[] = [];
 
-   constructor(public readonly dataElement: DataEntry, private readonly level = 0) {
+   constructor(
+      public damaGraph: DamaGraph,
+      public readonly dataElement: DataEntry,
+      private readonly level = 0
+   ) {
       // new TitleBox({ x: 195, y: 30 }, this.data.name, GraphColor.Data);
    }
 
@@ -329,7 +339,7 @@ class DataEntryBox implements GraphItem {
          case DataEntryType.Data:
             // TODO: IMPROVE!
             if (this.dataElement.value instanceof Data) {
-               let dtNode = new DataNode(this.dataElement.value, this.level + 1);
+               let dtNode = new DataNode(this.damaGraph, this.dataElement.value, this.level + 1);
                this.dataNodes.push(dtNode);
                g.addChild(dtNode.getGraphItem(g));
             }
@@ -352,7 +362,7 @@ class DataEntryBox implements GraphItem {
    private addSimpleBox(g: PIXI.Container, dataEntry: DataEntry): any {
       let color = dataEntry.getType() === DataEntryType.String ? GraphColor.String : GraphColor.Number;
       let titleBox = new TitleBox({ x: 200 - this.level * 10, y: 30 }, this.dataElement.name, color);
-      let outNudge = new OutputNudge([dataEntry], { x: titleBox.size.x, y: 1 });
+      let outNudge = new OutputNudge(this.damaGraph, [dataEntry], { x: titleBox.size.x, y: 1 });
       this.outNudges.push(outNudge);
       g.addChild(titleBox.getGraphItem(g));
       g.addChild(outNudge.getGraphItem(g));
@@ -440,18 +450,34 @@ class OutputNudge
    extends PIXI.Graphics
    implements GraphItem, WithContextMenu {
 
-
+   private isDragging: boolean = false;
+   private conLine: ConnectionLine;
    private connections: ManipulationNode[] = [];
 
    constructor(
+      public readonly damaGraph: DamaGraph,
       public readonly dataEntries: DataEntry[],
       public loc: Point,
       public isActive: boolean = false
    ) {
       super();
       this.interactive = true;
+      this.buttonMode = true;
       this.on("pointerover", this.onMouseOver, this);
       this.on("pointerout", this.onMouseOut, this);
+
+      this.on("mousedown", (e: PIXI.interaction.InteractionEvent) => { this.onDragStart(e); }, this);
+      this.on("touchstart", (e: PIXI.interaction.InteractionEvent) => { this.onDragStart(e); }, this);
+      // this.on("pointerdown", (e: PIXI.interaction.InteractionEvent) => { this.onDragStart(e); }, this);
+
+      this.on("mouseup", this.onDragEnd, this);
+      this.on("mouseupoutside", this.onDragEnd, this);
+      this.on("touchend", this.onDragEnd, this);
+      this.on("touchendoutside", this.onDragEnd, this);
+      this.on("pointerup", this.onDragEnd, this);
+
+      this.on("mousemove", (e: PIXI.interaction.InteractionEvent) => { this.onPointerMove(e); }, this);
+      this.on("pointermove", (e: PIXI.interaction.InteractionEvent) => { this.onPointerMove(e); }, this);
    }
 
    getGraphItem(parent?: PIXI.Container): PIXI.DisplayObject {
@@ -477,19 +503,44 @@ class OutputNudge
    }
 
    getContextMenu(parentGraph: DamaGraph, position: Point): ContextMenu {
-      return new ContextMenu(position)
-         .addButton("-->> Manipulation", (e) => {
+      let ctxMenu = new ContextMenu(position).addButton("Create Manipulation from here",
+         (e) => {
             let posWorld = parentGraph.toWorld(
                this.getGlobalPosition().x + 10,
                this.getGlobalPosition().y);
-            let mNode = new ManipulationNode(new Manipulation("Generic"));
+            let mNode = new ManipulationNode(this.damaGraph, new Manipulation("Generic"));
             parentGraph.addManipulation(
                mNode,
                posWorld
             );
-            mNode.addParam(this);
+            mNode.addConnection(this);
             this.connections.push(mNode);
-         }, this);
+         },
+         this
+      );
+
+      if (this.connections.length > 0) {
+         ctxMenu.addButton("Remove all connections", (e) => {
+            parentGraph.showDialog(
+               new DialogBox("Remove all connections?",
+                  (answer) => {
+                     if (answer === "yes") {
+                        this.removeAllConnections();
+                     }
+                  },
+                  new Point(e.x, e.y))
+            );
+         });
+      }
+
+      return ctxMenu;
+   }
+
+   private removeAllConnections() {
+      this.connections.forEach((connection) => {
+         connection.removeConnection(this);
+      });
+      this.connections = [];
    }
 
    notifyMove(): void {
@@ -506,18 +557,64 @@ class OutputNudge
          this.connections.splice(index, 1);
       }
    }
+
+   private onPointerMove(e: PIXI.interaction.InteractionEvent) {
+      if (this.isDragging) {
+         e.stopPropagation();
+
+         if (!this.conLine) {
+            this.conLine = new ConnectionLine(this);
+            this.getParentMainView(this.parent).addChild(this.conLine);
+         }
+
+         this.tint = GraphColor.OutputNudgeActive;
+         this.conLine.setToPos({x: e.data.global.x, y: e.data.global.y});
+         this.conLine.redraw();
+      }
+   }
+
+   private onDragStart(event: PIXI.interaction.InteractionEvent) {
+      event.stopPropagation();
+      this.isDragging = true;
+   }
+
+   private getParentMainView(view: any): Viewport {
+      return view.parent instanceof Viewport ? view.parent : this.getParentMainView(view.parent);
+   }
+
+   private onDragEnd(e: PIXI.interaction.InteractionEvent) {
+      this.isDragging = false;
+      this.tint = GraphColor.OutputNudge;
+
+      if (this.conLine) {
+         let posWorld = e.data.getLocalPosition(this.getParentMainView(this.parent));
+         let mNode = new ManipulationNode(this.damaGraph, new Manipulation("Generic"));
+         this.damaGraph.addManipulation(
+            mNode,
+            posWorld
+         );
+         mNode.addConnection(this);
+         this.connections.push(mNode);
+         this.getParentMainView(this.parent).removeChild(this.conLine);
+         this.conLine.destroy();
+         this.conLine = null;
+      }
+   }
 }
 
 class ManipulationNode extends PIXI.Container implements GraphItem, WithContextMenu {
-
    private titleBox: TitleBox;
    private inputNudge: InputNudge;
    private outputNudge: OutputNudge;
    private outDataNode: DataNode;
    private dragSetup: DraggableSetup;
-   private inputNudges: Map<OutputNudge, ConnectionLine> = new Map<OutputNudge, ConnectionLine>();
+   private inputConnections: Map<OutputNudge, ConnectionLine> = new Map<OutputNudge, ConnectionLine>();
 
-   constructor(public manipulation: Manipulation) {
+   constructor(
+      public readonly damaGraph: DamaGraph,
+      public manipulation: Manipulation,
+      position?: Point
+   ) {
       super();
 
       this.titleBox = new TitleBox(
@@ -541,14 +638,14 @@ class ManipulationNode extends PIXI.Container implements GraphItem, WithContextM
    }
 
    public refreshConnections(): void {
-      this.inputNudges.forEach((value: ConnectionLine) => {
+      this.inputConnections.forEach((value: ConnectionLine) => {
          value.redraw();
       });
       this.outDataNode.notifyMove();
    }
 
    private addOutNode() {
-      this.outputNudge = new OutputNudge(this.manipulation.Output.Entries, { x: this.titleBox.size.x, y: 10 }, true);
+      this.outputNudge = new OutputNudge(this.damaGraph, this.manipulation.Output.Entries, { x: this.titleBox.size.x, y: 10 }, true);
       let outNudge = this.outputNudge.getGraphItem();
       outNudge.name = "outputNudge";
       outNudge.y = this.height / 2;
@@ -557,7 +654,7 @@ class ManipulationNode extends PIXI.Container implements GraphItem, WithContextM
          this.removeChild(this.getChildByName(outNudge.name));
       this.addChild(outNudge);
 
-      this.outDataNode = new DataNode(this.manipulation.Output, 0, true);
+      this.outDataNode = new DataNode(this.damaGraph, this.manipulation.Output, 0, true);
       let outData = this.outDataNode.getGraphItem();
       outData.x = this.width - 1;
       outData.y = outNudge.y / 2 - 3.5;
@@ -568,11 +665,11 @@ class ManipulationNode extends PIXI.Container implements GraphItem, WithContextM
       this.addChild(outData);
    }
 
-   addParam(fromNudge: OutputNudge): ManipulationNode {
-      if (!this.inputNudges.has(fromNudge)) {
+   addConnection(fromNudge: OutputNudge): ManipulationNode {
+      if (!this.inputConnections.has(fromNudge)) {
          // add line to nudge
          let conLine = new ConnectionLine(fromNudge, this.inputNudge);
-         this.inputNudges.set(fromNudge, conLine);
+         this.inputConnections.set(fromNudge, conLine);
 
          this.parent.addChild(conLine);
          conLine.redraw(); // corrects positions -> todo: fix with better design
@@ -606,21 +703,35 @@ class ManipulationNode extends PIXI.Container implements GraphItem, WithContextM
       return cM;
    }
 
+   removeConnection(to: OutputNudge): any {
+      if (this.inputConnections.has(to)) {
+         this.parent.removeChild(this.inputConnections.get(to));
+         this.manipulation.deleteParameter(...to.dataEntries);
+         this.inputConnections.delete(to);
+      }
+   }
+
    destroy() {
-      this.inputNudges.forEach((value: ConnectionLine, key: OutputNudge) => {
+      this.inputConnections.forEach((value: ConnectionLine, key: OutputNudge) => {
          key.removeConnection(this);
          value.destroy();
       });
-      this.inputNudges = null;
+      this.inputConnections = null;
       super.destroy();
    }
 }
 
 class ConnectionLine extends PIXI.Graphics implements GraphItem {
+   private toPos: Point;
 
-   constructor(private readonly from: OutputNudge, private readonly to: InputNudge) {
+   constructor(private readonly from: OutputNudge, private to?: InputNudge) {
       super();
       this.redraw();
+   }
+
+   setToPos(toPos: Point): ConnectionLine {
+      this.toPos = toPos;
+      return this;
    }
 
    getGraphItem(parent?: PIXI.Container): PIXI.DisplayObject {
@@ -631,7 +742,7 @@ class ConnectionLine extends PIXI.Graphics implements GraphItem {
    redraw(): void {
       this.clear();
       let posStart = this.from.getGlobalPosition();
-      let posEnd = this.to.getGlobalPosition();
+      let posEnd = this.to ? this.to.getGlobalPosition() : this.toPos || posStart;
 
       if (this.parent) {
          let pTransform = (this.parent as Viewport).toWorld(posStart.x, posStart.y);
@@ -675,6 +786,7 @@ class DraggableSetup {
          let newPosition = this.dragData.data.getLocalPosition(this.element.parent);
          this.element.x = newPosition.x - this.dragStart.x;
          this.element.y = newPosition.y - this.dragStart.y;
+         this.element.alpha = 0.5;
          e.stopPropagation();
          this.moveListeners.forEach(f => f());
       }
@@ -684,7 +796,6 @@ class DraggableSetup {
       this.dragData = event;
       let tmpPos = event.data.getLocalPosition(this.element.parent);
       this.dragStart = new Point(tmpPos.x - this.element.x, tmpPos.y - this.element.y);
-      this.element.alpha = 0.5;
       this.isDragging = true;
    }
 

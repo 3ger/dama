@@ -82,11 +82,17 @@ export enum DataEntryType {
  * Represents the manipulation node
  */
 export class Manipulation {
+
    get Output(): Data {
       return this.getOutput();
    }
 
-   hasOut(): boolean { return this.Output.Entries.length > 0; }
+   /**
+    * Returns true if this manipulation has out data.
+    */
+   hasOut(): boolean {
+      return this.Output.Entries.length > 0;
+   }
 
    constructor(public name: string, public parameters?: Array<DataEntry>, public code?: string) {
       this.parameters = parameters || [];
@@ -94,11 +100,24 @@ export class Manipulation {
 
    /**
     * Adds given parameter to this Manipulation.
-    * @param param parameter to add to this Manipulation.
+    * @params params parameter to add to this Manipulation.
     */
-   addParam(...param: DataEntry[]): Manipulation {
-      this.parameters.push(...param);
+   addParam(...params: DataEntry[]): Manipulation {
+      this.parameters.push(...params);
       return this;
+   }
+
+   /**
+    * Deletes given parameter from this Manipulation.
+    * @param params parameter to delete from this Manipulation.
+    */
+   deleteParameter(...params: DataEntry[]): any {
+      params.forEach((dataEntry) => {
+         const index = this.parameters.indexOf(dataEntry, 0);
+         if (index > -1) {
+            this.parameters.splice(index, 1);
+         }
+      });
    }
 
    /**
