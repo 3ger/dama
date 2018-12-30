@@ -2,11 +2,10 @@ import * as PIXI from "pixi.js";
 import * as Viewport from "pixi-viewport";
 import { Data, DataEntry, DataEntryType, Manipulation } from "../DamaModel";
 
-
-export class DamaGraph {
+export class DamaGraph implements WithContextMenu {
    private pixiApp: PIXI.Application;
    private viewPort: Viewport;
-   private openedContextMenus: Array<ContextMenu> = [];
+   private openedMenus: Array<ContextMenu | DialogBox> = [];
 
    /**
     * Creates a new graph
@@ -100,16 +99,27 @@ export class DamaGraph {
       // close other context menus
       this.closeContextMenu();
 
-      // if clicked on output, open context menu for it
-      if (hasContext(event.target)) {
-         let contextMenu = event.target.getContextMenu(
+      let target: any = event.target;
+
+      // if target is viewport, redirect to this
+      if (target instanceof Viewport)
+         target = this;
+
+      // if clicked element with Context-Menu, open context menu for it
+      if (hasContext(target)) {
+         let contextMenu = target.getContextMenu(
             this,
             new Point(this.pixiApp.view.offsetLeft + event.data.global.x,
                this.pixiApp.view.offsetTop + event.data.global.y)
          );
-         this.openedContextMenus.push(contextMenu);
+         this.openedMenus.push(contextMenu);
          this.pixiApp.view.parentElement.appendChild(contextMenu.render());
       }
+   }
+
+   showDialog(dlg: DialogBox) {
+      this.openedMenus.push(dlg);
+      this.pixiApp.view.parentElement.appendChild(dlg.render());
    }
 
    private handleClickEvent(event: PIXI.interaction.InteractionEvent) {
@@ -117,10 +127,17 @@ export class DamaGraph {
    }
 
    private closeContextMenu() {
-      this.openedContextMenus.forEach(element => {
+      this.openedMenus.forEach(element => {
          element.destroy();
       });
-      this.openedContextMenus = [];
+      this.openedMenus = [];
+   }
+
+   getContextMenu(parentGraph: DamaGraph, position: Point): ContextMenu {
+      let contextMenu = new ContextMenu(position);
+      contextMenu.addButton("Add New Data", (e) => { console.log(e); });
+      contextMenu.addButton("Add New Manipulation", (e) => { console.log(e); });
+      return contextMenu;
    }
 
    toWorld(x: number, y: number): Point { return this.viewPort.toWorld(x, y); }
@@ -170,7 +187,7 @@ export class DamaGraph {
 /**
  * Represents the visual data node
  */
-class DataNode extends PIXI.Graphics implements GraphItem {
+class DataNode extends PIXI.Graphics implements GraphItem, WithContextMenu {
    private titleBox: TitleBox;
    private inputNudge: InputNudge;
    private outputNudge: OutputNudge;
@@ -243,7 +260,7 @@ class DataNode extends PIXI.Graphics implements GraphItem {
          // add surrounding box
          this.graphItem.beginFill(GraphColor.Data);
          this.graphItem.lineStyle(0, 0x0);
-         this.graphItem.drawRect(2, 2, this.graphItem.width - 3, this.graphItem.height - 2);
+         this.graphItem.drawRoundedRect(2, 2, this.graphItem.width - 4, this.graphItem.height - 2, 4);
       }
 
       // level text
@@ -273,6 +290,20 @@ class DataNode extends PIXI.Graphics implements GraphItem {
       else {
          return this.graphItem;
       }
+   }
+
+   getContextMenu(parentGraph: DamaGraph, position: Point): ContextMenu {
+      let cM = new ContextMenu(position);
+
+      cM.addButton("Delete '" + this.data.name + "'", (e) => {
+         parentGraph.showDialog(
+            new DialogBox("Delete data '" + this.data.name + "'?",
+               (answer) => { if (answer === "yes") this.destroy(); },
+               new Point(e.x, e.y))
+         );
+      });
+
+      return cM;
    }
 }
 
@@ -339,7 +370,7 @@ class TitleBox implements GraphItem {
       let g = new PIXI.Graphics()
          .lineStyle(1, 0x0, 1)
          .beginFill(this.color)
-         .drawRoundedRect(1, 1, this.size.x, this.size.y, 2)
+         .drawRoundedRect(1, 1, this.size.x, this.size.y, 4)
          .endFill();
 
       // create the text
@@ -379,7 +410,7 @@ class TitleBox implements GraphItem {
 }
 
 /**
- * Input data graph element
+ * Input nudge graph element
  */
 class InputNudge extends PIXI.Graphics implements GraphItem {
    constructor(public isActive: boolean = false) {
@@ -403,11 +434,12 @@ class InputNudge extends PIXI.Graphics implements GraphItem {
 }
 
 /**
- * Output graph element
+ * Output nudge element
  */
 class OutputNudge
    extends PIXI.Graphics
    implements GraphItem, WithContextMenu {
+
 
    private connections: ManipulationNode[] = [];
 
@@ -461,13 +493,22 @@ class OutputNudge
    }
 
    notifyMove(): void {
-      this.connections.forEach(element => {
-         element.refreshConnections();
-      });
+      if (this.connections) {
+         this.connections.forEach(element => {
+            element.refreshConnections();
+         });
+      }
+   }
+
+   removeConnection(manipulationNode: ManipulationNode): any {
+      const index = this.connections.indexOf(manipulationNode, 0);
+      if (index > -1) {
+         this.connections.splice(index, 1);
+      }
    }
 }
 
-class ManipulationNode extends PIXI.Container implements GraphItem {
+class ManipulationNode extends PIXI.Container implements GraphItem, WithContextMenu {
 
    private titleBox: TitleBox;
    private inputNudge: InputNudge;
@@ -550,6 +591,29 @@ class ManipulationNode extends PIXI.Container implements GraphItem {
          this.addOutNode();
       return this;
    }
+
+   getContextMenu(parentGraph: DamaGraph, position: Point): ContextMenu {
+      let cM = new ContextMenu(position);
+
+      cM.addButton("Delete '" + this.manipulation.name + "'", (e) => {
+         parentGraph.showDialog(
+            new DialogBox("Delete data '" + this.manipulation.name + "'?",
+               (answer) => { if (answer === "yes") this.destroy(); },
+               new Point(e.x, e.y))
+         );
+      });
+
+      return cM;
+   }
+
+   destroy() {
+      this.inputNudges.forEach((value: ConnectionLine, key: OutputNudge) => {
+         key.removeConnection(this);
+         value.destroy();
+      });
+      this.inputNudges = null;
+      super.destroy();
+   }
 }
 
 class ConnectionLine extends PIXI.Graphics implements GraphItem {
@@ -612,9 +676,7 @@ class DraggableSetup {
          this.element.x = newPosition.x - this.dragStart.x;
          this.element.y = newPosition.y - this.dragStart.y;
          e.stopPropagation();
-         this.moveListeners.forEach(f => {
-            f(); //  .call(context);
-         });
+         this.moveListeners.forEach(f => f());
       }
    }
 
@@ -682,14 +744,15 @@ class ContextMenu {
    addButton(text: string, onClick: (e: MouseEvent) => void, context?: any): ContextMenu {
       let btn = window.document.createElement("button");
       btn.innerText = text;
+      btn.type = "button";
+      btn.className = "btn btn-outline-primary";
+
       btn.onclick = (e) => {
          context ? onClick.call(context, e) : onClick(e);
          this.destroy();
       };
       btn.oncontextmenu = (e) => { e.preventDefault(); };
-      let br = window.document.createElement("br");
       this.elements.push(btn);
-      this.elements.push(br);
       return this;
    }
 
@@ -698,9 +761,16 @@ class ContextMenu {
          return this.menuElement;
 
       this.menuElement = window.document.createElement("div");
+      this.menuElement.className = "toast show";
+
+      let btnGroup = window.document.createElement("div");
+      btnGroup.className = "btn-group-vertical btn-group-sm";
+      btnGroup.setAttribute("style", "padding: .1rem;");
+
       this.elements.forEach(element => {
-         this.menuElement.appendChild(element);
+         btnGroup.appendChild(element);
       });
+      this.menuElement.appendChild(btnGroup);
 
       this.menuElement.oncontextmenu = (e) => { e.preventDefault(); };
       this.menuElement.style.position = "absolute";
@@ -719,6 +789,79 @@ class ContextMenu {
       this.menuElement = null;
    }
 }
+
+/**
+ * Generic Context Menu used for right click menu's
+ */
+class DialogBox {
+   private menuElement?: HTMLDivElement;
+   private elements: HTMLElement[] = [];
+
+   constructor(question: string, onAnswer: (answer: "yes" | "no") => void, position: Point, context?: any) {
+
+      let btnYes = window.document.createElement("button");
+      btnYes.innerHTML = "<i class='fas fa-check'></i> Yes";
+      btnYes.type = "button";
+      btnYes.className = "btn btn-outline-danger btn-sm";
+      btnYes.onclick = (e) => {
+         context ? onAnswer.call(context, "yes") : onAnswer("yes");
+         this.destroy();
+      };
+
+      let btnNo = window.document.createElement("button");
+      btnNo.innerHTML = "<i class='fas fa-times'></i> No";
+      btnNo.type = "button";
+      btnNo.className = "btn btn-outline-secondary btn-sm";
+      btnNo.onclick = (e) => {
+         context ? onAnswer.call(context, "no") : onAnswer("no");
+         this.destroy();
+      };
+
+      this.elements.push(btnYes);
+      this.elements.push(btnNo);
+
+      this.menuElement = window.document.createElement("div");
+      this.menuElement.className = "toast show";
+
+      let header = window.document.createElement("div");
+      header.className = "toast-header";
+
+      let title = window.document.createElement("strong");
+      title.className = "mr-auto";
+      title.innerText = question;
+      header.appendChild(title);
+
+      let btnGroup = window.document.createElement("div");
+      btnGroup.className = "btn-group";
+      btnGroup.setAttribute("style", "padding: .5rem; min-width: 150px;");
+      this.elements.forEach(element => {
+         btnGroup.appendChild(element);
+      });
+
+      this.menuElement.appendChild(header);
+      this.menuElement.appendChild(btnGroup);
+
+      this.menuElement.oncontextmenu = (e) => { e.preventDefault(); };
+      this.menuElement.style.position = "absolute";
+      this.menuElement.style.left = (position.x) + "px";
+      this.menuElement.style.top = (position.y) + "px";
+   }
+
+   render(): HTMLDivElement {
+      return this.menuElement;
+   }
+
+   destroy() {
+      this.elements.forEach(element => {
+         element.remove();
+      });
+      if (this.menuElement)
+         this.menuElement.remove();
+      this.menuElement = null;
+   }
+}
+
+
 
 /// ******************************** Interfaces **************** //
 interface GraphItem {
