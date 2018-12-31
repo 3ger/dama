@@ -1,23 +1,25 @@
 import * as PIXI from "pixi.js";
 import * as Viewport from "pixi-viewport";
-import { Data, DataEntry, DataEntryType, Manipulation } from "../DamaModel";
+import { Data, DataEntry, DataEntryType, Manipulation, Dama } from "../DamaModel";
 
 export class DamaGraph implements WithContextMenu {
    private pixiApp: PIXI.Application;
    private viewPort: Viewport;
    private openedMenus: Array<ContextMenu | DialogBox> = [];
-   private manipulations: ManipulationNode[] = [];
+   private manipulationNodes: ManipulationNode[] = [];
 
    /**
     * Creates a new graph
     *
     * @param {DamaGraphConfig} [config] config for graph to use
     */
-   constructor(public config?: DamaGraphConfig) {
+   constructor(public config?: DamaGraphConfig, private dama?: Dama) {
       config = config || {};
       config.size = config.size || new Point(800, 800);
       config.workspaceSize = config.workspaceSize || new Point(4000, 4000);
       config.backgroundColor = config.backgroundColor || 0xEEEEEE;
+
+      this.dama = dama || new Dama();
 
       this.pixiApp = new PIXI.Application(
          config.size.x,
@@ -80,7 +82,7 @@ export class DamaGraph implements WithContextMenu {
    }
 
    hitTest(posWorld: Point): ManipulationNode {
-      for (let element of this.manipulations) {
+      for (let element of this.manipulationNodes) {
          let elPos = element.getJoinHitBox();
          if (posWorld.x >= elPos.pos.x && posWorld.x <= (elPos.pos.x + elPos.size.x)) {
             if (posWorld.y >= elPos.pos.y && posWorld.y <= (elPos.pos.y + elPos.size.y)) {
@@ -97,23 +99,32 @@ export class DamaGraph implements WithContextMenu {
       this.viewPort.addChild(dnVis);
       dnVis.x = position.x;
       dnVis.y = position.y;
+      this.dama.addNode(data);
       return dn;
    }
 
-   addManipulation(manipulationNode: ManipulationNode, position: Point): ManipulationNode {
+   removeDataNode(data: Data): DamaGraph {
+      this.dama.removeNode(data);
+      return this;
+   }
+
+   addManipulationNode(manipulationNode: ManipulationNode, position: Point): ManipulationNode {
       let mNVis = manipulationNode.getGraphItem();
       this.viewPort.addChild(mNVis);
       mNVis.x = position.x;
       mNVis.y = position.y;
-      this.manipulations.push(manipulationNode);
+      this.manipulationNodes.push(manipulationNode);
+      this.dama.addNode(manipulationNode.manipulation);
       return manipulationNode;
    }
 
-   removeManipulation(manipulationNode: ManipulationNode) {
-      const index = this.manipulations.indexOf(manipulationNode, 0);
+   removeManipulationNode(manipulationNode: ManipulationNode): DamaGraph {
+      const index = this.manipulationNodes.indexOf(manipulationNode, 0);
       if (index > -1) {
-         this.manipulations.splice(index, 1);
+         this.manipulationNodes.splice(index, 1);
       }
+      this.dama.removeNode(manipulationNode.manipulation);
+      return this;
    }
 
    private handleRightClickEvent(event: PIXI.interaction.InteractionEvent) {
@@ -157,6 +168,7 @@ export class DamaGraph implements WithContextMenu {
 
    getContextMenu(parentGraph: DamaGraph, position: Point): ContextMenu {
       let contextMenu = new ContextMenu(position);
+      // TODO: implement
       contextMenu.addButton("Add New Data", (e) => { console.log(e); });
       contextMenu.addButton("Add New Manipulation", (e) => { console.log(e); });
       return contextMenu;
@@ -325,7 +337,12 @@ class DataNode extends PIXI.Graphics implements GraphItem, WithContextMenu {
       cM.addButton("Delete '" + this.data.name + "'", (e) => {
          parentGraph.showDialog(
             new DialogBox("Delete data '" + this.data.name + "'?",
-               (answer) => { if (answer === "yes") this.destroy(); },
+               (answer) => {
+                  if (answer === "yes") {
+                     parentGraph.removeDataNode(this.data);
+                     this.destroy();
+                  }
+               },
                new Point(e.x, e.y))
          );
       });
@@ -535,7 +552,7 @@ class OutputNudge
                this.getGlobalPosition().x + 10,
                this.getGlobalPosition().y);
             let mNode = new ManipulationNode(this.damaGraph, new Manipulation("Generic"));
-            parentGraph.addManipulation(
+            parentGraph.addManipulationNode(
                mNode,
                posWorld
             );
@@ -621,7 +638,7 @@ class OutputNudge
          }
          else {
             mNode = new ManipulationNode(this.damaGraph, new Manipulation("Generic"));
-            this.damaGraph.addManipulation(
+            this.damaGraph.addManipulationNode(
                mNode,
                posWorld
             );
@@ -764,7 +781,7 @@ class ManipulationNode extends PIXI.Container implements GraphItem, WithContextM
    }
 
    destroy() {
-      this.damaGraph.removeManipulation(this);
+      this.damaGraph.removeManipulationNode(this);
       this.inputConnections.forEach((value: ConnectionLine, key: OutputNudge) => {
          key.removeConnection(this);
          value.destroy();
@@ -917,6 +934,9 @@ class ContextMenu {
    constructor(private readonly position: Point) { }
 
    addButton(text: string, onClick: (e: MouseEvent) => void, context?: any): ContextMenu {
+      if (this.menuElement)
+         throw new Error("Can not add buttons after rendering.");
+
       let btn = window.document.createElement("button");
       btn.innerText = text;
       btn.type = "button";

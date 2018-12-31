@@ -135,7 +135,7 @@ export class Manipulation {
 export class Dama {
    private nodes: Map<string, Manipulation | Data> = new Map<string, Manipulation | Data>();
 
-   getNode(name: string): Array<Data | Manipulation> | null {
+   getNodeByName(name: string): Array<Data | Manipulation> | null {
       return Array
          .from(this.nodes.values())
          .filter((element: Manipulation | Data) => element.name === name) || null;
@@ -143,6 +143,12 @@ export class Dama {
 
    addNode(node: Manipulation | Data): Dama {
       this.nodes.set(this.nodes.size.toString(), node);
+      return this;
+   }
+
+   removeNode(node: Manipulation | Data): Dama {
+      const key = Array.from(this.nodes.keys()).find(key => this.nodes.get(key) === node);
+      if (key) this.nodes.delete(key);
       return this;
    }
 }
