@@ -87,6 +87,24 @@ export class Manipulation {
       return this.getOutput();
    }
 
+   // TODO: rework
+   get code(): string {
+      let fLine = "// Params: ";
+      this.parameters.forEach(element => {
+         fLine += element.name + ", ";
+      });
+
+      if ((this._code.match(/\n/g) || "").length + 1 > 1) {
+         this._code = this._code.slice(this._code.indexOf("\n") + 2);
+      }
+
+      return fLine.slice(0, -2) + "\n\n" + this._code;
+   }
+
+   set code(code: string) {
+      this._code = code;
+   }
+
    /**
     * Returns true if this manipulation has out data.
     */
@@ -94,8 +112,9 @@ export class Manipulation {
       return this.Output.Entries.length > 0;
    }
 
-   constructor(public name: string, public parameters?: Array<DataEntry>, public code?: string) {
+   constructor(public name: string, public parameters?: Array<DataEntry>, private _code?: string) {
       this.parameters = parameters || [];
+      this.code = _code || "";
    }
 
    /**

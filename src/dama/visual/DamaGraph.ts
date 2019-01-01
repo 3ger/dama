@@ -1,6 +1,7 @@
 import * as PIXI from "pixi.js";
 import * as Viewport from "pixi-viewport";
 import { Data, DataEntry, DataEntryType, Manipulation, Dama } from "../DamaModel";
+import { CodeEditor } from "./CodeEditor";
 
 export class DamaGraph implements WithContextMenu {
    private pixiApp: PIXI.Application;
@@ -664,6 +665,7 @@ class ManipulationNode extends PIXI.Container implements GraphItem, WithContextM
    private outDataNode: DataNode;
    private dragSetup: DraggableSetup;
    private inputConnections: Map<OutputNudge, ConnectionLine> = new Map<OutputNudge, ConnectionLine>();
+   private codeEditor: CodeEditor;
 
    constructor(
       public readonly damaGraph: DamaGraph,
@@ -693,9 +695,11 @@ class ManipulationNode extends PIXI.Container implements GraphItem, WithContextM
    }
 
    public refreshConnections(): void {
-      this.inputConnections.forEach((value: ConnectionLine) => {
-         value.redraw();
-      });
+      if (this.inputConnections) {
+         this.inputConnections.forEach((value: ConnectionLine) => {
+            value.redraw();
+         });
+      }
       this.outDataNode.notifyMove();
    }
 
@@ -765,6 +769,11 @@ class ManipulationNode extends PIXI.Container implements GraphItem, WithContextM
                (answer) => { if (answer === "yes") this.destroy(); },
                new Point(e.x, e.y))
          );
+      }).addButton("Open Code", (e) => {
+         if (!this.codeEditor)
+            this.codeEditor = new CodeEditor("js", this.manipulation);
+
+         this.codeEditor.show();
       });
 
       return cM;
