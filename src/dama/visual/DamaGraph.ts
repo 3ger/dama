@@ -172,6 +172,16 @@ export class DamaGraph implements WithContextMenu {
       // TODO: implement
       contextMenu.addButton("Add New Data", (e) => { console.log(e); });
       contextMenu.addButton("Add New Manipulation", (e) => { console.log(e); });
+      contextMenu.addSeparationLine().addButton("Save Graph Json", (e) => {
+         var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(this.dama.toJsonString());
+         var downloadAnchorNode = document.createElement("a");
+         downloadAnchorNode.setAttribute("href", dataStr);
+         downloadAnchorNode.setAttribute("download", "DaMa_Graph.json");
+         document.body.appendChild(downloadAnchorNode);
+         downloadAnchorNode.click();
+         downloadAnchorNode.remove();
+      });
+
       return contextMenu;
    }
 
@@ -957,6 +967,19 @@ class ContextMenu {
       };
       btn.oncontextmenu = (e) => { e.preventDefault(); };
       this.elements.push(btn);
+      return this;
+   }
+
+   addSeparationLine(): ContextMenu {
+      if (this.menuElement)
+         throw new Error("Can not add buttons after rendering.");
+
+      let div = window.document.createElement("hr");
+      div.setAttribute("style",
+         "border:dotted #000000 2px; margin: 0; width: -webkit-fill-available; width: -moz-available;");
+      div.width = "100";
+      div.oncontextmenu = (e) => { e.preventDefault(); };
+      this.elements.push(div);
       return this;
    }
 

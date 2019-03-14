@@ -1,4 +1,4 @@
-import * as CodeFlask  from "codeflask";
+import * as CodeFlask from "codeflask";
 import { Manipulation } from "../DamaModel";
 
 
@@ -13,7 +13,9 @@ export class CodeEditor {
       this.codeChangedCallbacks = [];
       this.parentElement = window.document.createElement("div");
 
-      this.editor = new CodeFlask.default(this.parentElement, { language: language, lineNumbers: true });
+      this.editor = new CodeFlask.default(this.parentElement,
+         { language: language, lineNumbers: true });
+
       this.editor.onUpdate((code) => {
          this.manipulation.code = code;
          this.codeChangedCallbacks.forEach(element => {
@@ -47,6 +49,10 @@ export class CodeEditor {
       window.document.getElementById("codeEditorModal").style.display = "none";
    }
 
+   /**
+    * Adds listener to onUpdate event.
+    * @param callback the fn to call on event
+    */
    onCodeChanged(callback: (code: string) => void): CodeEditor {
       if (!this.codeChangedCallbacks.find((fn) => callback === fn)) {
          this.codeChangedCallbacks.push(callback);

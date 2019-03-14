@@ -1,12 +1,28 @@
 import { Log } from "./log";
+import { inherits } from "util";
 
 // Dama Data Model
+
+abstract class DaMaObject {
+   public Id: string = DaMaObject.uuidv4();
+
+   /**
+    * Creates UUIDv4
+    * Function taken from https://stackoverflow.com/a/2117523
+    */
+   private static uuidv4(): string {
+      return ([1e7] as any + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, (c: number) =>
+         (c ^ (crypto.getRandomValues(new Uint8Array(1)) as Uint8Array)[0] & 15 >> c / 4).toString(16)
+      );
+   }
+}
 
 /**
  * Representing the Data-Node
  */
-export class Data {
+export class Data extends DaMaObject {
    constructor(public name: string, public Entries?: Array<DataEntry>) {
+      super();
       this.Entries = Entries || [];
    }
 
@@ -15,10 +31,10 @@ export class Data {
     * @param element data-entry to add
     */
    public add(element: { value: string | number, name: string } | DataEntry): Data {
-      this.Entries.push(element instanceof DataEntry ?
-         element :
-         new DataEntry(element.name, element.value)
-      );
+      var tmpEntry: DataEntry;
+      if (element instanceof DataEntry) tmpEntry = element;
+      else tmpEntry = new DataEntry(element.name, element.value);
+      this.Entries.push(tmpEntry);
       return this;
    }
 }
@@ -81,7 +97,7 @@ export enum DataEntryType {
 /**
  * Represents the manipulation node
  */
-export class Manipulation {
+export class Manipulation extends DaMaObject {
 
    get Output(): Data {
       return this.getOutput();
@@ -113,6 +129,7 @@ export class Manipulation {
    }
 
    constructor(public name: string, public parameters?: Array<DataEntry>, private _code?: string) {
+      super();
       this.parameters = parameters || [];
       this.code = _code || "";
    }
@@ -152,7 +169,7 @@ export class Manipulation {
  * Represents the graph of Dama, containing Data and Manipulations
  */
 export class Dama {
-   private nodes: Map<string, Manipulation | Data> = new Map<string, Manipulation | Data>();
+   private nodes: Array<Manipulation | Data> = new Array<Manipulation | Data>();
 
    getNodeByName(name: string): Array<Data | Manipulation> | null {
       return Array
@@ -161,13 +178,22 @@ export class Dama {
    }
 
    addNode(node: Manipulation | Data): Dama {
-      this.nodes.set(this.nodes.size.toString(), node);
+      this.nodes.push(node);
       return this;
    }
 
    removeNode(node: Manipulation | Data): Dama {
-      const key = Array.from(this.nodes.keys()).find(key => this.nodes.get(key) === node);
-      if (key) this.nodes.delete(key);
+      const index = this.nodes.findIndex((element) => element.Id === node.Id);
+      if (index > -1) this.nodes.splice(index, 1);
       return this;
+   }
+
+   toJsonString(): string {
+      return JSON.stringify(this.nodes, null, 3);
+   }
+
+   loadJsonString(jsonString: string): void {
+      // TODO implement
+
    }
 }
