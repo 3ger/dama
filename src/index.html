@@ -9,25 +9,9 @@
       crossorigin="anonymous">
    <script src="/main.bundle.js"></script>
 
-   <script>
-      // PREVENT DOUBLE-CLICK SELECT ALL ON CANVAS
-      document.addEventListener('mousedown', function (event) {
-         if (event.detail > 1) {
-            if (event.composedPath().find((e) => e.id === "maincanvas"))
-               event.preventDefault();
-         }
-      }, false);
-   </script>
 </head>
 
 <body>
-   <div>
-      <div>
-         <h1>DaMa</h1>
-         <p><canvas id="maincanvas"></canvas></p>
-      </div>
-   </div>
-
    <!--- TODO REMOVE THIS AND REWORK CodeEditor -->
    <div class="modal bd-example-modal-xl" id="codeEditorModal">
       <div class="modal-dialog modal-xl mh-100" style="max-width: 90%;" role="document">
