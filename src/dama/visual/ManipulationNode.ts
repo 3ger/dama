@@ -1,5 +1,5 @@
 import { Manipulation } from "../DamaModel";
-import { CodeEditor } from "./CodeEditor";
+import { CodeEditor } from "../interaction/CodeEditor";
 import { DialogBox } from "./DialogBox";
 import { ContextMenu } from "./ContextMenu";
 import { DataNode } from "./DataNode";

@@ -3,14 +3,15 @@
       "outDir": "./dist/",
       "sourceMap": true,
       "noImplicitAny": true,
-      "module": "es6",
-      "target": "es6",
+      "module": "esnext",
+      "target": "esnext",
       "lib": [
          "es2016",
          "dom"
       ],
       "declaration": true,
-      "typeRoots": ["./lib", "./node_modules/@types"]
+      "typeRoots": ["./lib", "./node_modules/@types"],
+      "incremental": true
    },
    "exclude": ["lib", "node_modules" ]
 }
