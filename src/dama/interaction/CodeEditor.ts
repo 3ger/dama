@@ -33,7 +33,7 @@ export class CodeEditor {
          this.showInternal();
       }
       else {
-         TemplateLoader.loadTemplate("CodeEditor").then(result => {
+         TemplateLoader.loadTemplate("CodeEditor", undefined, true).then(result => {
             if (result) {
                this.templateLoaded = true;
                this.showInternal();

@@ -3,6 +3,8 @@ export class TemplateLoader {
    private static readonly templatePath: string = "/dama/interaction/templates/";
    private static store: Map<string, Array<HTMLElement>> = new Map<string, Array<HTMLElement>>();
 
+
+   /// TODO: create a way to get the element (insertedInto<<<) also, this can be optimized later on
    /**
     * Loads given template into given HtmlElement
     *

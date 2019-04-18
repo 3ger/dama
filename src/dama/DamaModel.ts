@@ -1,16 +1,19 @@
 import { Log } from "./log";
-import { inherits } from "util";
 
 // Dama Data Model
 
 abstract class DaMaObject {
-   public Id: string = DaMaObject.uuidv4();
+   private Id: string;
+
+   constructor(id?: string) { this.Id = id ? id : DaMaObject.uuidv4(); }
+
+   getId(): string { return this.Id; }
 
    /**
     * Creates UUIDv4
     * Function taken from https://stackoverflow.com/a/2117523
     */
-   private static uuidv4(): string {
+   protected static uuidv4(): string {
       return ([1e7] as any + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, (c: number) =>
          (c ^ (crypto.getRandomValues(new Uint8Array(1)) as Uint8Array)[0] & 15 >> c / 4).toString(16)
       );
@@ -21,8 +24,8 @@ abstract class DaMaObject {
  * Representing the Data-Node
  */
 export class Data extends DaMaObject {
-   constructor(public name: string, public Entries?: Array<DataEntry>) {
-      super();
+   constructor(public name: string, public Entries?: Array<DataEntry>, id?: string) {
+      super(id);
       this.Entries = Entries || [];
    }
 
@@ -128,8 +131,13 @@ export class Manipulation extends DaMaObject {
       return this.Output.Entries.length > 0;
    }
 
-   constructor(public name: string, public parameters?: Array<DataEntry>, private _code?: string) {
-      super();
+   constructor(
+      public name: string,
+      public parameters?: Array<DataEntry>,
+      private _code?: string,
+      id?: string) {
+
+      super(id);
       this.parameters = parameters || [];
       this.code = _code || "";
    }
@@ -183,7 +191,7 @@ export class Dama {
    }
 
    removeNode(node: Manipulation | Data): Dama {
-      const index = this.nodes.findIndex((element) => element.Id === node.Id);
+      const index = this.nodes.findIndex((element) => element.getId() === node.getId());
       if (index > -1) this.nodes.splice(index, 1);
       return this;
    }
