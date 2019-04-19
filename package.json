@@ -5,11 +5,10 @@
    "main": "./dist/main.js",
    "scripts": {
       "start": "webpack-dev-server --port 9000 --inline --progress --profile --colors --watch --content-base src/ --mode development",
-      "build": "webpack --config webpack.config.js --mode production",
+      "build": "webpack --config webpack.config.js --mode development",
       "build.prod": "webpack --config webpack.config.js -p",
       "test": "karma start karma.config.js",
-      "killme": "Taskkill /IM node.exe /F",
-      "prepare": "webpack --config webpack-npm.config.js --mode production "
+      "killme": "Taskkill /IM node.exe /F"
    },
    "keywords": [
       "graph",
@@ -31,6 +30,7 @@
       "@types/pixi.js": "^4.8.6",
       "awesome-typescript-loader": "^5.2.1",
       "codeflask": "^1.4.0",
+      "css-loader": "^2.1.1",
       "jasmine-core": "^3.3.0",
       "karma": "^2.0.5",
       "karma-chrome-launcher": "^2.2.0",
@@ -38,15 +38,18 @@
       "karma-jasmine-html-reporter": "^1.4.0",
       "karma-mocha-reporter": "^2.2.5",
       "karma-webpack": "^3.0.5",
-      "pixi-viewport": "^3.14.2",
+      "monaco-editor": "^0.16.2",
+      "monaco-editor-webpack-plugin": "^1.7.0",
+      "pixi-viewport": "^3.22.0",
       "pixi.js": "^4.8.4",
-      "source-map": "^0.7.3",
+      "source-map": "^0.8.0-beta.0",
       "source-map-loader": "^0.2.4",
+      "style-loader": "^0.23.1",
       "tslint": "^5.12.0",
       "tslint-loader": "^3.6.0",
-      "typescript": "^2.9.2",
-      "webpack": "^4.28.1",
-      "webpack-cli": "^3.1.2",
+      "typescript": "^3.4.4",
+      "webpack": "^4.30.0",
+      "webpack-cli": "^3.3.0",
       "webpack-dev-server": "^3.2.1"
    }
 }

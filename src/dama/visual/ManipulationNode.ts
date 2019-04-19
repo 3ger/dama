@@ -1,5 +1,5 @@
 import { Manipulation } from "../DamaModel";
-import { CodeEditor } from "../interaction/CodeEditor";
+import { CodeEditorMonaco } from "../interaction/CodeEditorMonaco";
 import { DialogBox } from "./DialogBox";
 import { ContextMenu } from "./ContextMenu";
 import { DataNode } from "./DataNode";
@@ -20,7 +20,7 @@ export class ManipulationNode extends PIXI.Container implements GraphItem, WithC
    private outDataNode: DataNode;
    private dragSetup: DraggableSetup;
    private inputConnections: Map<OutputNudge, ConnectionLine> = new Map<OutputNudge, ConnectionLine>();
-   private codeEditor: CodeEditor;
+   private codeEditor: CodeEditorMonaco;
 
    constructor(public readonly damaGraph: DamaGraph, public manipulation: Manipulation, position?: Point) {
       super();
@@ -98,7 +98,7 @@ export class ManipulationNode extends PIXI.Container implements GraphItem, WithC
          }, new Point(e.x, e.y)));
       }).addButton("Open Code", (e) => {
          if (!this.codeEditor)
-            this.codeEditor = new CodeEditor("js", this.manipulation);
+            this.codeEditor = new CodeEditorMonaco("csharp", this.manipulation);
          this.codeEditor.show();
       });
       return cM;

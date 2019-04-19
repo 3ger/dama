@@ -1,8 +1,8 @@
 const path = require('path');
-const webpack = require('webpack');
+const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
 
-const ROOT = path.resolve( __dirname, 'src' );
-const DESTINATION = path.resolve( __dirname, 'dist' );
+const ROOT = path.resolve(__dirname, 'src');
+const DESTINATION = path.resolve(__dirname, 'dist');
 
 module.exports = {
    context: ROOT,
@@ -29,23 +29,32 @@ module.exports = {
          {
             enforce: 'pre',
             test: /\.js$/,
+            exclude: [/dist/],
             use: 'source-map-loader'
          },
          {
             enforce: 'pre',
             test: /\.ts$/,
-            exclude: /node_modules/,
+            exclude: [/node_modules/, /dist/],
             use: 'tslint-loader'
          },
          {
             test: /\.ts$/,
-            exclude: [ /node_modules/ ],
+            exclude: [/node_modules/, /dist/],
             use: 'awesome-typescript-loader'
-         }
+         },
+         {
+            test: /\.css$/,
+            use: ['style-loader', 'css-loader'],
+            //include:[path.resolve(__dirname, '..', 'node_modules/monaco-editor')]
+         },
       ]
    },
 
    devtool: 'source-map',
-   devServer: {}
+   devServer: {},
+   plugins: [
+      new MonacoWebpackPlugin()
+   ]
 };
 
