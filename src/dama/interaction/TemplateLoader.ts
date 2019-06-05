@@ -37,11 +37,27 @@ export class TemplateLoader {
                tmpEl.push(insertInto);
             else
                this.store.set(templateName, [insertInto]);
+
+            // Also add scripts
+            TemplateLoader.addScripts(insertInto);
          }
          return true;
       }
       catch {
          return false;
       }
+   }
+
+   private static addScripts(parent: Node) {
+      parent.childNodes.forEach(node => {
+         if (node.nodeName === "SCRIPT") {
+            var scriptNode = document.createElement("script");
+            scriptNode.text = node.textContent;
+            node.parentNode.replaceChild(scriptNode, node);
+         }
+
+         if (node.childNodes && node.childNodes.length > 0)
+            TemplateLoader.addScripts(node);
+      });
    }
 }
