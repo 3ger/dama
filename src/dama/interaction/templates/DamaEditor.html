@@ -4,15 +4,19 @@
    // PREVENT DOUBLE-CLICK SELECT ALL ON CANVAS
    document.addEventListener('mousedown', function (event) {
       if (event.detail > 1) {
-         if (event.composedPath().find((e) => e.id === "maincanvas"))
+         if (event.composedPath().find(e => e.id === "maincanvas"))
             event.preventDefault();
       }
    }, false);
 </script>
 
-<div>
-   <div>
-      <h1>DaMa</h1>
-      <p><canvas id="maincanvas"></canvas></p>
-   </div>
+<div class="container-fluid vh-100" style="min-height: 450px;">
+   <dev class="d-flex flex-column h-100">
+      <div class="d-flex flex-row">
+         <h1>DaMa</h1>
+      </div>
+      <div class="d-flex flex-row flex-fill" style="margin-bottom: 10px;">
+         <canvas id="maincanvas"></canvas>
+      </div>
+   </dev>
 </div>

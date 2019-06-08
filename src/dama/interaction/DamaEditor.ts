@@ -21,7 +21,8 @@ export class DamaEditor {
             this.graph = new DamaGraph({
                viewCanvas: canvasElement,
                size: { x: canvasElement.offsetParent.clientWidth, y: window.innerHeight * 0.85 },
-               backgroundColor: 0xEEEEEE
+               backgroundColor: 0xEEEEEE,
+               autoSize: true,
             });
          }
       });

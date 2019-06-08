@@ -13,6 +13,7 @@ export class DamaGraph implements WithContextMenu {
    private viewPort: Viewport;
    private openedMenus: Array<ContextMenu | DialogBox> = [];
    private manipulationNodes: ManipulationNode[] = [];
+   private parentElement: HTMLElement;
 
    /**
     * Creates a new graph
@@ -27,6 +28,7 @@ export class DamaGraph implements WithContextMenu {
 
       this.dama = dama || new Dama();
 
+      PIXI.utils.skipHello();
       this.pixiApp = new PIXI.Application(
          config.size.x,
          config.size.y,
@@ -76,7 +78,21 @@ export class DamaGraph implements WithContextMenu {
       this.pixiApp.stage.on("tap", this.handleRightClickEvent, this);
       this.pixiApp.stage.on("click", this.handleClickEvent, this);
 
+      this.parentElement = this.pixiApp.view.parentElement;
+
+      if (this.config.autoSize) {
+         this.setAutoSize(false);
+         window.onresize = () => this.setAutoSize();
+      }
+
       this.addTest();
+   }
+
+   private setAutoSize(onResize: boolean = true) {
+      this.pixiApp.renderer.resize(this.parentElement.clientWidth, this.parentElement.clientHeight);
+      this.pixiApp.view.style.height = "100%";
+      if (onResize)
+         this.viewPort.resize(this.parentElement.clientWidth, this.parentElement.clientHeight);
    }
 
    /**

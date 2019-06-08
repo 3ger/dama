@@ -8,4 +8,5 @@ export interface DamaGraphConfig {
    workspaceSize?: Point;
    backgroundColor?: number;
    viewCanvas?: HTMLCanvasElement;
+   autoSize?: boolean;
 }
