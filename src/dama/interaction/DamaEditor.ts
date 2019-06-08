@@ -2,7 +2,7 @@ import { DamaGraph } from "../visual/DamaGraph";
 import { TemplateLoader } from "./TemplateLoader";
 
 export class DamaEditor {
-
+   
    private graph: DamaGraph;
 
    /**
@@ -15,6 +15,8 @@ export class DamaEditor {
          document.body.appendChild(this.startElement);
       }
 
+      this.startup();
+
       TemplateLoader.loadTemplate("DamaEditor", this.startElement).then(result => {
          if (result) {
             let canvasElement = <HTMLCanvasElement>window.document.getElementById("maincanvas");
@@ -26,5 +28,9 @@ export class DamaEditor {
             });
          }
       });
+   }
+
+   private startup() {
+      window.customElements.define("template-loader", TemplateLoader);
    }
 }

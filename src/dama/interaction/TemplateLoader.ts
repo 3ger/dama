@@ -1,8 +1,11 @@
 
-export class TemplateLoader {
+export class TemplateLoader extends HTMLElement {
    private static readonly templatePath: string = "/dama/interaction/templates/";
    private static store: Map<string, Array<HTMLElement>> = new Map<string, Array<HTMLElement>>();
 
+   connectedCallback() {
+      TemplateLoader.loadTemplate(this.getAttribute("template"), this);
+    }
 
    /// TODO: create a way to get the element (insertedInto<<<) also, this can be optimized later on
    /**
