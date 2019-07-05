@@ -119,9 +119,9 @@ export class ManipulationNode extends PIXI.Container implements GraphItem, WithC
          key.removeConnection(this);
          value.destroy();
       });
-      if (this.outputNudge)
+      if (this.outputNudge && this.outputNudge.parent)
          this.outputNudge.destroy();
-      if (this.outDataNode)
+      if (this.outDataNode && this.outDataNode.parent)
          this.outDataNode.destroy();
       this.inputConnections = null;
       super.destroy();

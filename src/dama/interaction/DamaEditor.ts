@@ -1,8 +1,12 @@
 import { DamaGraph } from "../visual/DamaGraph";
 import { TemplateLoader } from "./TemplateLoader";
+import { JsonLoader } from "../core/JsonLoader";
+import { EnvironmentConfig } from "../core/EnvironmentConfig";
+
 
 export class DamaEditor {
-   
+
+   private readonly settingsPath: string = "dama/dama.json";
    private graph: DamaGraph;
 
    /**
@@ -17,16 +21,18 @@ export class DamaEditor {
 
       this.startup();
 
-      TemplateLoader.loadTemplate("DamaEditor", this.startElement).then(result => {
-         if (result) {
-            let canvasElement = <HTMLCanvasElement>window.document.getElementById("maincanvas");
-            this.graph = new DamaGraph({
-               viewCanvas: canvasElement,
-               size: { x: canvasElement.offsetParent.clientWidth, y: window.innerHeight * 0.85 },
-               backgroundColor: 0xEEEEEE,
-               autoSize: true,
-            });
-         }
+      JsonLoader.load<EnvironmentConfig>(this.settingsPath).then(settings => {
+         TemplateLoader.loadTemplate("DamaEditor", this.startElement).then(result => {
+            if (result) {
+               let canvasElement = <HTMLCanvasElement>window.document.getElementById("maincanvas");
+               this.graph = new DamaGraph({
+                  viewCanvas: canvasElement,
+                  size: { x: canvasElement.offsetParent.clientWidth, y: window.innerHeight * 0.85 },
+                  backgroundColor: 0x888888,
+                  autoSize: true,
+               });
+            }
+         });
       });
    }
 

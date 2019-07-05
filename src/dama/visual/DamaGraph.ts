@@ -24,10 +24,10 @@ export class DamaGraph implements WithContextMenu {
       config = config || {};
       config.size = config.size || new Point(800, 800);
       config.workspaceSize = config.workspaceSize || new Point(4000, 4000);
-      config.backgroundColor = config.backgroundColor || 0xEEEEEE;
+      config.backgroundColor = typeof config.backgroundColor === "undefined" ? 0xEEEEEE : config.backgroundColor;
 
       this.dama = dama || new Dama();
-
+      
       PIXI.utils.skipHello();
       this.pixiApp = new PIXI.Application(
          config.size.x,
