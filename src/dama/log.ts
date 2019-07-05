@@ -4,7 +4,7 @@ export class Log {
    /// Supported placeholder:
    /// DATETIME  - ISO no T, no Z
    /// MESSAGE   - msg given
-   private static format = "[DATETIME] MESSAGE";
+   private static format = "DAMA - [DATETIME] MESSAGE";
 
    private static getLogFormat(message: string): string {
       const d = new Date();

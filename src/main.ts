@@ -1,8 +1,9 @@
 import {DamaEditor} from "./dama/interaction/DamaEditor";
+import { Log } from "./dama/log";
 
 class StartUp {
    async start() {
-      new DamaEditor();
+      new DamaEditor().onLoaded = ( editor ) => { Log.log("loaded editor"); };
    }
 }
 

@@ -10,6 +10,11 @@ export class DamaEditor {
    private graph: DamaGraph;
 
    /**
+    * Loaded event, fired when finished loading editor
+    */
+   public onLoaded: (editor: DamaEditor) => void;
+
+   /**
     * @param startElement Div element where Editor is attached to, if empty attached to body.
     */
    constructor(private startElement?: HTMLDivElement) {
@@ -21,19 +26,28 @@ export class DamaEditor {
 
       this.startup();
 
-      JsonLoader.load<EnvironmentConfig>(this.settingsPath).then(settings => {
-         TemplateLoader.loadTemplate("DamaEditor", this.startElement).then(result => {
-            if (result) {
-               let canvasElement = <HTMLCanvasElement>window.document.getElementById("maincanvas");
-               this.graph = new DamaGraph({
-                  viewCanvas: canvasElement,
-                  size: { x: canvasElement.offsetParent.clientWidth, y: window.innerHeight * 0.85 },
-                  backgroundColor: 0x888888,
-                  autoSize: true,
-               });
-            }
-         });
-      });
+      JsonLoader.load<EnvironmentConfig>(this.settingsPath)
+         .then(settings => {
+            // TODO: setup settings
+         })
+         .then(() => {
+            // load template for editor
+            TemplateLoader.loadTemplate("DamaEditor", this.startElement).then(result => {
+               if (result) {
+                  let canvasElement = <HTMLCanvasElement>window.document.getElementById("maincanvas");
+                  this.graph = new DamaGraph({
+                     viewCanvas: canvasElement,
+                     size: { x: canvasElement.offsetParent.clientWidth, y: window.innerHeight * 0.85 },
+                     backgroundColor: 0x888888,
+                     autoSize: true,
+                  });
+               }
+            });
+         })
+         .then(
+            // fire loaded event
+            () => this.onLoaded(this)
+         );
    }
 
    private startup() {
