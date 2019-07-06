@@ -173,12 +173,14 @@ export class Manipulation extends DaMaObject {
    }
 }
 
+export class DamaBase {
+   protected nodes: Array<Manipulation | Data> = new Array<Manipulation | Data>();
+}
+
 /**
  * Represents the graph of Dama, containing Data and Manipulations
  */
-export class Dama {
-   private nodes: Array<Manipulation | Data> = new Array<Manipulation | Data>();
-
+export class Dama extends DamaBase {
    getNodeByName(name: string): Array<Data | Manipulation> | null {
       return Array
          .from(this.nodes.values())
