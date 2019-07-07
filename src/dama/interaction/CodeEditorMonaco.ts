@@ -15,7 +15,7 @@ export class CodeEditorMonaco {
       this.editor = Monaco.editor.create(this.parentElement, {
          value: manipulation.code,
          language: language,
-       });
+      });
    }
 
    private setCode(code: string) {
@@ -27,7 +27,7 @@ export class CodeEditorMonaco {
          this.showInternal();
       }
       else {
-         TemplateLoader.loadTemplate("CodeEditor", undefined, true).then(result => {
+         TemplateLoader.loadTemplate("CodeEditor", undefined, false).then((result) => {
             if (result) {
                this.templateLoaded = true;
                this.showInternal();
@@ -48,8 +48,8 @@ export class CodeEditorMonaco {
       modal.style.display = "block";
       this.editor.layout(<Monaco.editor.IDimension>{
          height: (appendTo as HTMLDivElement).clientHeight,
-         width: (appendTo as HTMLDivElement).clientWidth}
-      );
+         width: (appendTo as HTMLDivElement).clientWidth
+      });
    }
 
    hide() {

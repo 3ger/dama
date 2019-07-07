@@ -29,7 +29,7 @@ module.exports = {
          {
             enforce: 'pre',
             test: /\.js$/,
-            exclude: [/dist/],
+            exclude: [/dist/, /node_modules/],
             use: 'source-map-loader'
          },
          {

@@ -14,5 +14,6 @@
       "incremental": true,
       "moduleResolution": "node"
    },
-   "exclude": ["lib", "node_modules" ]
+   "exclude": [ "lib", "node_modules" ],
+   "include": [ "src" ]
 }

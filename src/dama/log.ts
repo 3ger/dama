@@ -28,6 +28,7 @@ export class Log {
    static err(message: string) {
       if (!this.environment.production) {
          console.error(Log.getLogFormat(message));
+         console.error(new Error().stack);
       }
    }
 }

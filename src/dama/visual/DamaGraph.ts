@@ -27,7 +27,7 @@ export class DamaGraph implements WithContextMenu {
       config.backgroundColor = typeof config.backgroundColor === "undefined" ? 0xEEEEEE : config.backgroundColor;
 
       this.dama = dama || new Dama();
-      
+
       PIXI.utils.skipHello();
       this.pixiApp = new PIXI.Application(
          config.size.x,

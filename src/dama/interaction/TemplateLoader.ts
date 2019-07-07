@@ -5,7 +5,7 @@ export class TemplateLoader extends HTMLElement {
 
    connectedCallback() {
       TemplateLoader.loadTemplate(this.getAttribute("template"), this);
-    }
+   }
 
    /// TODO: create a way to get the element (insertedInto<<<) also, this can be optimized later on
    /**
@@ -18,7 +18,8 @@ export class TemplateLoader extends HTMLElement {
    public static async loadTemplate(
       templateName: string,
       insertInto?: HTMLElement,
-      addDuplicate?: boolean): Promise<boolean> {
+      addDuplicate?: boolean,
+      onLoaded?: () => void): Promise<boolean> {
 
       let tmpEl = this.store.get(templateName);
       if (tmpEl !== undefined && !addDuplicate) {
@@ -43,6 +44,14 @@ export class TemplateLoader extends HTMLElement {
 
             // Also add scripts
             TemplateLoader.addScripts(insertInto);
+
+            // add onload observer and fire event if needed
+            if (onLoaded) {
+               new MutationObserver((mut, obs) => {
+                  onLoaded();
+                  obs.disconnect();
+               }).observe(insertInto, { childList: true, subtree: true });
+            }
          }
          return true;
       }
