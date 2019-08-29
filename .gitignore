@@ -1,6 +1,4 @@
 .idea
-node_modules
-!node_modules/@types/pixi-viewport/*
 src/**/*.js
 src/**/*.js.map
 typings
@@ -12,4 +10,12 @@ debug.log
 karma_html
 Documentation
 package-lock.json
+node_modules/*
+
+# allow one needed self created type for now, 
+# remove with an updated version of pixie-viewport 
+# as it seems it was added there
+!node_modules/@types/
+node_modules/@types/*
+!node_modules/@types/pixi-viewport/
 
